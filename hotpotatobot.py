@@ -23,6 +23,10 @@ immune_ids = Hotloader('immune.txt', REFRESH_DELAY, lambda x:
         set([int(i) for i in x])
         )
 
+admins = Hotloader('admins.txt', REFRESH_DELAY, lambda x:
+        set([int(i) for i in x])
+)
+
 #Doubles to count active games by existence, will also stash default on game start
 currentVictims = {} 
 
@@ -103,6 +107,20 @@ async def stop_game(ctx):
             await ctx.respond("I'm not even doing anything")  
         else:
             await ctx.respond("This isn't my channel?!")
+
+@roboticus.slash_command(name = "refresh", description = "Force parameter refresh")
+async def refresh_all(ctx):
+    global potato_images
+    global default_users
+    global immune_ids
+    global admins
+
+    if ctx.author.id in admins.get():
+        await ctx.respond("Ugh, Fiiiiiiiine")
+        for loader in (potato_images, default_users, immune_ids, admins):
+            loader.update()
+    else:
+        await ctx.respond("You're not my dad!")
 
 
 roboticus.run(TOKEN)
