@@ -1,34 +1,31 @@
 import discord
 import asyncio
 import random
+from hotloader import Hotloader
 
-TOKEN = "OTM0Njg2ODA0MDkzODQ5NjYx.GAaf_W.fYTAvzV_8qK4mQSJpHyDPrCzCUGIhHkImwYQjI"
+with open('token.txt') as f:
+    TOKEN = f.readline()
 
 BOT_ID = 934686804093849661
-
 SCORPIO = 407815751454425088
 PRISM = 492869347698671618
 
-POTATO_IMAGE_URLS = ["https://media.discordapp.net/attachments/1001718360825921616/1002171863025328138/unknown.png",
-    "https://i.imgur.com/3ik5tXG.png",
-    "https://i.imgur.com/xZmkowH.jpeg",
-    "https://i.imgur.com/AYjFiwb.jpeg",
-    "https://i.imgur.com/1DIl775.jpeg",
-    "https://i.imgur.com/FKWWBXz.jpeg",
-    "https://i.imgur.com/SvUauEO.jpeg",
-    "https://i.imgur.com/g9julEy.jpeg",
-    "https://i.imgur.com/nJKpzVp.png",
-    "https://i.imgur.com/1eFtIHy.jpeg",
-    "https://i.imgur.com/TwH2N8D.jpeg",
-    "https://i.imgur.com/ZVKY4yK.jpeg",
-    "https://i.imgur.com/FdecYCl.jpeg",
-    "https://i.imgur.com/bEcV612.jpeg"]
+REFRESH_DELAY = 86400 #1 day
 
-default_users = {1001718360825921616: SCORPIO, 1004713311885066240: 253841151851888640}
-immune_ids = set([BOT_ID,155149108183695360,471091072546766849,697107653821726730,184405311681986560,356065937318871041,510016054391734273])
+potato_images = Hotloader('images.txt', REFRESH_DELAY)
 
-gamesStarted = {chan: False for chan in default_users}
-currentVictims = {chan: None for chan in default_users}
+#keys double as list of valid channels
+default_users = Hotloader('defaults.txt', REFRESH_DELAY, lambda x: 
+        {int(pair[0]): int(pair[1]) for pair in [s.split() for s in x]}
+        )
+
+immune_ids = Hotloader('immune.txt', REFRESH_DELAY, lambda x: 
+        set([int(i) for i in x])
+        )
+
+#Doubles to count active games by existence, will also stash default on game start
+currentVictims = {} 
+
 
 roboticus = discord.Bot(intents= discord.Intents.all())
 
@@ -40,25 +37,23 @@ async def on_ready():
 
 @roboticus.event
 async def on_message(msg):
-    global gamesStarted
     global currentVictims
 
     chan = msg.channel.id
-    if chan in default_users:#Keys for defaults are valid channels
-        if gamesStarted[chan] == True:
-            if msg.author.id == currentVictims[chan]: 
-                pings = msg.mentions
-                newVictim = None
-                try:
-                    newVictim = pings[0].id
-                    if newVictim in immune_ids:
-                        newVictim = default_users[chan]
-                        if msg.author.id == default_users[chan]:
-                            await msg.channel.send("They have an analogous gun to my head, fuck that, ping someone else")
-                    currentVictims[chan] = newVictim
-                
-                except IndexError:
-                    await msg.channel.send("You aren't getting off the hook that easily smartass")
+    if chan in currentVictims:
+        if msg.author.id == currentVictims[chan][0]: 
+            pings = msg.mentions
+            newVictim = None
+            try:
+                newVictim = pings[0].id
+                if newVictim in immune_ids.get():
+                    newVictim = currentVictims[chan][1]
+                    if msg.author.id == currentVictims[chan][1]:
+                        await msg.channel.send("They know where I live, fuck that, ping someone else")
+                currentVictims[chan] = (newVictim,currentVictims[chan][1])
+            
+            except IndexError:
+                await msg.channel.send("You aren't getting off the hook that easily smartass")
 
 
 @roboticus.slash_command(name = "pingscorpio", description = "Exactly what it says on the tin")
@@ -68,22 +63,23 @@ async def pingScorpio(ctx):
 
 @roboticus.slash_command(name = "start", description = "Begin hot potato, no there is no stop")
 async def start_game(ctx, seconds_between_pings: discord.Option(int)):
-    global gamesStarted
     global currentVictims
+    
+    #we cache the cache as the hotloader contents are volitile
+    default_user_cache = default_users.get().copy()
     
     chan = ctx.channel.id
     
-    if (chan in default_users):
-        if gamesStarted[chan]:
+    if (chan in default_user_cache):
+        if chan in currentVictims:
             await ctx.respond("If you hadn't already noticed we have already started")
         else:
-            gamesStarted[chan] = True
-            currentVictims[chan] = ctx.author.id
+            currentVictims[chan] = (ctx.author.id, default_user_cache[chan])
             await ctx.respond("Beginning Hot Potato!")
             while True:
-                await ctx.channel.send("<@" + str(currentVictims[chan]) +">, You are the hot potato, ping someone here to pass it on! " + random.choice(POTATO_IMAGE_URLS))
+                await ctx.channel.send("<@" + str(currentVictims[chan][0]) +">, You are the hot potato, ping someone here to pass it on! " + random.choice(potato_images.get()))
                 await asyncio.sleep(seconds_between_pings)
-                if not gamesStarted[chan]: #haha funny asynchronous bullshit
+                if not chan in currentVictims: #haha funny asynchronous bullshit
                     break
     
     else:
@@ -91,22 +87,22 @@ async def start_game(ctx, seconds_between_pings: discord.Option(int)):
 
 @roboticus.slash_command(name = "stop", description = "a command that will be ignored")
 async def stop_game(ctx):
-    global gamesStarted
+    global currentVictims
     
     chan = ctx.channel.id
-    if (chan in default_users):
-        if not gamesStarted[chan]:
-            await ctx.respond("I'm not even doing anything")
+
+    if chan in currentVictims:
+        if ctx.author.id == currentVictims[chan][0]:
+            await ctx.respond("Don't be a spoil sport, pass the potato first!")
         else:
-            if chan in default_users:
-                if ctx.author.id == currentVictims[chan]:
-                    await ctx.respond("Don't be a spoil sport, pass the potato first!")
-                else:
-                    gamesStarted[chan] = False
-                    await ctx.respond("Cringe")
-        
+            currentVictims.pop(chan)
+            await ctx.respond("Cringe")
+
     else:
-        await ctx.respond("This isn't my channel?!")
+        if (chan in currentVictims[chan][1]):
+            await ctx.respond("I'm not even doing anything")  
+        else:
+            await ctx.respond("This isn't my channel?!")
 
 
 roboticus.run(TOKEN)
