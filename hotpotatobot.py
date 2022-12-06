@@ -12,6 +12,10 @@ PRISM = 492869347698671618
 
 REFRESH_DELAY = 86400 #1 day
 
+#TODO add bot to emergency backup server and provide better emoji
+ACCEPT_EMOJI =  '<:TOGgers:950342911613091840>'
+REJECT_EMOJI =  '<:MikeWazowski:941965673595297792>'
+
 potato_images = Hotloader('images.txt', REFRESH_DELAY)
 
 #keys double as list of valid channels
@@ -30,8 +34,11 @@ admins = Hotloader('admins.txt', REFRESH_DELAY, lambda x:
 #Doubles to count active games by existence, will also stash default on game start
 currentVictims = {} 
 
+#Active image request messages
+active_requests = set()
 
 roboticus = discord.Bot(intents= discord.Intents.all())
+
 
 
 @roboticus.event
@@ -41,6 +48,7 @@ async def on_ready():
 
 @roboticus.event
 async def on_message(msg):
+    #TODO Comment this one
     global currentVictims
 
     chan = msg.channel.id
@@ -121,6 +129,60 @@ async def refresh_all(ctx):
             loader.update()
     else:
         await ctx.respond("You're not my dad!")
+
+@roboticus.slash_command(name = "submit_image", description = "submit a URL to a potato image to be added to the image pool (Reviewed by a hooman)")
+async def submit_image(ctx, image_link: discord.Option(str)): 
+
+    moderator = await roboticus.fetch_user(random.choice(tuple(admins.get())))#its a one off niche, admins being a set makes sense everywhere else fucking bite me
+
+    #Embed with the specific submission information, allows easy retrieval later
+    emb = discord.Embed(title = 'Image Submission', color = 0x00ff00)
+    emb.add_field(name = 'User', value = ctx.author, inline = True)
+    emb.add_field(name = 'User_ID', value = ctx.author.id, inline = True)
+    emb.add_field(name = 'Server', value = ctx.guild, inline = False)
+    emb.add_field(name = 'Submission', value = image_link, inline = False)
+    emb.set_image(url = image_link) #test as if the image will embed correctly from link
+    
+    #If the given link isn't a url then discord will hissy fit trying to embed
+    try:
+        moderation_message = await moderator.send(embed = emb)
+    except discord.errors.HTTPException as e:
+        await ctx.respond("Look Buckaroo, I don't have time for shitpost requests that aren\'t even links. You could be spending your time far more wisely, like prank calling the european space agency")
+        return
+
+    await ctx.respond("I'll ask my boss")
+
+    active_requests.add(moderation_message)
+    for emoji in [ACCEPT_EMOJI, REJECT_EMOJI]:
+        #react with emoji for decision
+        await moderation_message.add_reaction(emoji) 
+    
+    
+    
+
+   
+
+
+@roboticus.event
+async def on_reaction_add(reaction, user):
+    if user.id == BOT_ID:
+        return
+
+    mess = reaction.message
+    if mess in active_requests: #Check if message is a submission confirmation message
+        request_info = mess.embeds[0].fields
+        if str(reaction.emoji) == ACCEPT_EMOJI:
+            new_image_link = request_info[3].value
+            #TODO
+
+        if str(reaction.emoji) == REJECT_EMOJI:
+            #Send a notification to user who submitted request
+            requestor = await roboticus.fetch_user(request_info[1].value)
+            await requestor.send("I asked my employer about your image submission ({}). \n They told me, and I quote: \"No.\" \n Ensure your submissions are valid links to images of potatos, such that discord will auto-embed the image into a message that includes them".format(request_info[3].value))
+
+        await mess.delete()
+        active_requests.remove(mess)
+        
 
 
 roboticus.run(TOKEN)
