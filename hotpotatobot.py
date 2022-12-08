@@ -13,21 +13,27 @@ PRISM = 492869347698671618
 REFRESH_DELAY = 86400 #1 day
 
 #TODO add bot to emergency backup server and provide better emoji
-ACCEPT_EMOJI =  '<:TOGgers:950342911613091840>'
-REJECT_EMOJI =  '<:MikeWazowski:941965673595297792>'
+ACCEPT_EMOJI = '<:hotpotatyes:1050319143095783434>'
+REJECT_EMOJI = '<:hotpotatno:1050319139853565992>'
 
-potato_images = Hotloader('images.txt', REFRESH_DELAY)
+IMAGE_FILE = 'images.txt'
+DEFAULT_FILE = 'defaults.txt'
+IMMUNE_FILE = 'immune.txt'
+ADMIN_FILE = 'admins.txt'
+
+
+potato_images = Hotloader(IMAGE_FILE, REFRESH_DELAY)
 
 #keys double as list of valid channels
-default_users = Hotloader('defaults.txt', REFRESH_DELAY, lambda x: 
+default_users = Hotloader(DEFAULT_FILE, REFRESH_DELAY, lambda x: 
         {int(pair[0]): int(pair[1]) for pair in [s.split() for s in x]}
         )
 
-immune_ids = Hotloader('immune.txt', REFRESH_DELAY, lambda x: 
+immune_ids = Hotloader(IMMUNE_FILE, REFRESH_DELAY, lambda x: 
         set([int(i) for i in x])
         )
 
-admins = Hotloader('admins.txt', REFRESH_DELAY, lambda x:
+admins = Hotloader(ADMIN_FILE, REFRESH_DELAY, lambda x:
         set([int(i) for i in x])
 )
 
@@ -153,15 +159,9 @@ async def submit_image(ctx, image_link: discord.Option(str)):
     await ctx.respond("I'll ask my boss")
 
     active_requests.add(moderation_message)
-    for emoji in [ACCEPT_EMOJI, REJECT_EMOJI]:
+    for emo in [ACCEPT_EMOJI, REJECT_EMOJI]:
         #react with emoji for decision
-        await moderation_message.add_reaction(emoji) 
-    
-    
-    
-
-   
-
+        await moderation_message.add_reaction(emo) 
 
 @roboticus.event
 async def on_reaction_add(reaction, user):
@@ -171,14 +171,17 @@ async def on_reaction_add(reaction, user):
     mess = reaction.message
     if mess in active_requests: #Check if message is a submission confirmation message
         request_info = mess.embeds[0].fields
+        requestor = await roboticus.fetch_user(request_info[1].value)
+        new_image_link = request_info[3].value
+        
         if str(reaction.emoji) == ACCEPT_EMOJI:
-            new_image_link = request_info[3].value
-            #TODO
+            await requestor.send("I had a look at your image submission ({}). \n I found it to be, as the kids say, exceedingly 'pog champion' and added it to my collection".format(new_image_link))
+            #Save new link to pool to be updated in hotloader later
+            with open(IMAGE_FILE, 'a') as f:
+                f.write('\n' + new_image_link)
 
         if str(reaction.emoji) == REJECT_EMOJI:
-            #Send a notification to user who submitted request
-            requestor = await roboticus.fetch_user(request_info[1].value)
-            await requestor.send("I asked my employer about your image submission ({}). \n They told me, and I quote: \"No.\" \n Ensure your submissions are valid links to images of potatos, such that discord will auto-embed the image into a message that includes them".format(request_info[3].value))
+            await requestor.send("I asked my employer about your image submission ({}). \n They told me, and I quote: \"No.\" \n Ensure your submissions are valid links to images of potatos, such that discord will auto-embed the image into a message that includes them".format(new_image_link))
 
         await mess.delete()
         active_requests.remove(mess)
