@@ -37,7 +37,7 @@ admins = Hotloader(ADMIN_FILE, REFRESH_DELAY, lambda x:
         set([int(i) for i in x])
 )
 
-#Doubles to count active games by existence, will also stash default on game start
+#Doubles to count active games by existence, also stashes default on game start
 currentVictims = {} 
 
 #Active image request messages
@@ -138,8 +138,9 @@ async def refresh_all(ctx):
 
 @roboticus.slash_command(name = "submit_image", description = "submit a URL to a potato image to be added to the image pool (Reviewed by a hooman)")
 async def submit_image(ctx, image_link: discord.Option(str)): 
-
-    moderator = await roboticus.fetch_user(random.choice(tuple(admins.get())))#its a one off niche, admins being a set makes sense everywhere else fucking bite me
+    
+    #fucking bite me
+    moderator = await roboticus.fetch_user(random.choice(tuple(admins.get())))
 
     #Embed with the specific submission information, allows easy retrieval later
     emb = discord.Embed(title = 'Image Submission', color = 0x00ff00)
@@ -147,7 +148,7 @@ async def submit_image(ctx, image_link: discord.Option(str)):
     emb.add_field(name = 'User_ID', value = ctx.author.id, inline = True)
     emb.add_field(name = 'Server', value = ctx.guild, inline = False)
     emb.add_field(name = 'Submission', value = image_link, inline = False)
-    emb.set_image(url = image_link) #test as if the image will embed correctly from link
+    emb.set_image(url = image_link) #shows if image will embed correctly
     
     #If the given link isn't a url then discord will hissy fit trying to embed
     try:
@@ -169,7 +170,7 @@ async def on_reaction_add(reaction, user):
         return
 
     mess = reaction.message
-    if mess in active_requests: #Check if message is a submission confirmation message
+    if mess in active_requests: #Check if submission confirmation message
         request_info = mess.embeds[0].fields
         requestor = await roboticus.fetch_user(request_info[1].value)
         new_image_link = request_info[3].value
