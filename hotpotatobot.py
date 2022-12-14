@@ -110,7 +110,8 @@ async def stop_game(ctx):
     chan = ctx.channel.id
 
     if chan in currentVictims:
-        if ctx.author.id == currentVictims[chan][0]:
+        if ((ctx.author.id == currentVictims[chan][0]) and 
+                (ctx.author.id not in admins.get())):
             await ctx.respond("Don't be a spoil sport, pass the potato first!")
         else:
             currentVictims.pop(chan)
