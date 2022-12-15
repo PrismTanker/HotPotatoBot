@@ -118,10 +118,7 @@ async def stop_game(ctx):
             await ctx.respond("Cringe")
 
     else:
-        if (chan in currentVictims[chan][1]):
-            await ctx.respond("I'm not even doing anything")  
-        else:
-            await ctx.respond("This isn't my channel?!")
+        await ctx.respond("I'm not even doing anything")
 
 @roboticus.slash_command(name = "refresh", description = "Force parameter refresh")
 async def refresh_all(ctx):
