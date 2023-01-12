@@ -62,11 +62,14 @@ async def on_message(msg):
         if msg.author.id == currentVictims[chan][0]: 
             pings = msg.mentions
             newVictim = None
+            #If valid, set hotpotato target of channel to first ping in message
             try:
                 newVictim = pings[0].id
                 if newVictim in immune_ids.get():
+                    #Target default victim if an immune id is targetted
                     newVictim = currentVictims[chan][1]
                     if msg.author.id == currentVictims[chan][1]:
+                        #Give feedback if user was already default
                         await msg.channel.send("They know where I live, fuck that, ping someone else")
                 currentVictims[chan] = (newVictim,currentVictims[chan][1])
             
@@ -139,6 +142,9 @@ async def submit_image(ctx, image_link: discord.Option(str)):
     
     #fucking bite me
     moderator = await roboticus.fetch_user(random.choice(tuple(admins.get())))
+
+    #Cleanse input strings (blank lines in file would be read + we desire embed)
+    image_link = image_link.rstrip('\n').strip()
 
     #Embed with the specific submission information, allows easy retrieval later
     emb = discord.Embed(title = 'Image Submission', color = 0x00ff00)
