@@ -10,7 +10,7 @@ INVALID_REFRESH = "That sounds like effort, I choose not to"
 EPIC_EMBED_FAILURE_LAUGH_AT_THIS_USER = "Look Buckaroo, I don't have time for shitposts that aren\'t even links. You could be spending your time far more wisely, like prank calling the european space agency"
 IMAGE_SUBMISSION = "I've sent your link to my manager"
 IMAGE_SUBMISSION_RESPONSE = "Alright Lets see what you've got"
-
+IMMUNE_PING = "Fuck no! I fear no man, but that *thing*, it scares me"
 
 # 0: User ID, 1: Potato image url
 GAME_PROMPT = "<@{0}>, You are the hot potato, ping someone here to pass it on! {1}"

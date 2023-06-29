@@ -21,10 +21,9 @@ ACCEPT_EMOJI = '<:hotpotatyes:1050319143095783434>'
 REJECT_EMOJI = '<:hotpotatno:1050319139853565992>'
 
 IMAGE_FILE = 'images.txt'
-DEFAULT_FILE = 'defaults.txt'
 IMMUNE_FILE = 'immune.txt'
+CHANNELS_FILE = 'channels.txt'
 ADMIN_FILE = 'admins.txt'
-
 
 
 #TODO docstrings and typehints
@@ -32,9 +31,10 @@ class HotPotatoBot(discord.Bot):
     def __init__(
             self, 
             image_file, 
-            default_file, 
+            channel_file, 
             immune_file, 
-            admin_file, 
+            admin_file,
+            refresh_delay = REFRESH_DELAY, 
             description=None, 
             *args, **options
     ):
@@ -43,27 +43,18 @@ class HotPotatoBot(discord.Bot):
                 intents = discord.Intents.all(), #TODO restrict intents
                 *args, 
                 **options)
-        #TODO Privitise shit
-        self.potato_images = Hotloader(IMAGE_FILE, REFRESH_DELAY)
+        
+        set_setter = lambda x: set([int(i) for i in x])
+        self.potato_images = Hotloader(image_file, refresh_delay)
+        self.channels = Hotloader(channel_file, refresh_delay, set_setter)
+        self.immune_ids = Hotloader(immune_file, refresh_delay, set_setter)
+        self.admins = Hotloader(admin_file, refresh_delay, set_setter)
 
-        #keys double as list of valid channels
-        self.default_users = Hotloader(DEFAULT_FILE, REFRESH_DELAY, lambda x: 
-                {int(pair[0]): int(pair[1]) for pair in [s.split() for s in x]}
-        )
-
-        self.immune_ids = Hotloader(IMMUNE_FILE, REFRESH_DELAY, lambda x: 
-                set([int(i) for i in x])
-        )
-
-        self.admins = Hotloader(ADMIN_FILE, REFRESH_DELAY, lambda x:
-                set([int(i) for i in x])
-        )
-
-        #Doubles to count active games by existence, also stashes default on game start
-        self.currentVictims = {} 
+        #Active games
+        self._currentVictims = {} 
 
         #Active image request messages
-        self.active_requests = set()
+        self._active_requests = set()
 
         #Cursed command configuration
         self._define_commands()
@@ -74,22 +65,18 @@ class HotPotatoBot(discord.Bot):
 
     async def on_message(self, msg):
         chan = msg.channel.id
-        if chan in self.currentVictims:
-            if msg.author.id == self.currentVictims[chan][0]: 
+        if chan in self._currentVictims:
+            if msg.author.id == self._currentVictims[chan]: 
                 pings = msg.mentions
                 newVictim = None
 
-                #If valid, set hotpotato target of channel to first ping in message TODO look at all pings not just first, Use if bot, remove default target 
+                #If valid, set hotpotato target of channel to first ping in message TODO look at all pings not just first, Use if bot
                 try:
                     newVictim = pings[0].id
                     if newVictim in self.immune_ids.get():
-                        #Target default victim if an immune id is targetted
-                        newVictim = self.currentVictims[chan][1]
-                        if msg.author.id == self.currentVictims[chan][1]:
-                            #Give feedback if user was already default
-                            await msg.channel.send("They know where I live, fuck that, ping someone else")
-                    self.currentVictims[chan] = (newVictim,self.currentVictims[chan][1])
-                
+                        await msg.channel.send(IMMUNE_PING)
+                    else:
+                        self._currentVictims[chan] = newVictim                                
                 except IndexError:
                     await msg.channel.send(INVALID_PING)
 
@@ -98,7 +85,7 @@ class HotPotatoBot(discord.Bot):
             return
 
         mess = reaction.message
-        if mess in self.active_requests: #Check if submission confirmation message
+        if mess in self._active_requests: #Check if submission confirmation message
             request_info = mess.embeds[0].fields
             requestor = await self.fetch_user(request_info[1].value)
             new_image_link = request_info[3].value
@@ -113,7 +100,7 @@ class HotPotatoBot(discord.Bot):
                 await requestor.send(IMAGE_DENIED.format(new_image_link))
 
             await mess.delete()
-            self.active_requests.remove(mess)
+            self._active_requests.remove(mess)
 
     
     # Too lazy to figure out how to reimplement Bot.slash_command functionality
@@ -123,31 +110,30 @@ class HotPotatoBot(discord.Bot):
                 name = "start", 
                 description = "Begin hot potato, you know you want to"
         )
-        async def start_game(ctx, seconds_between_pings: discord.Option(int)):            
-            #Hotloader contents are volitile
-            default_user_cache = self.default_users.get().copy()
-            
+        async def start_game(ctx, seconds_between_pings: discord.Option(int)):                        
             chan = ctx.channel.id
             
-            if (chan in default_user_cache):
-                if chan in self.currentVictims:
+
+            #Remember HotLoader contents are volitile when working with this
+            if (chan in self.channels.get()):
+                if chan in self._currentVictims:
                     await ctx.respond(ALREADY_STARTED)
                 else:
-                    self.currentVictims[chan] = (ctx.author.id, default_user_cache[chan])
+                    self._currentVictims[chan] = ctx.author.id
                     await ctx.respond(START_GAME)
 
                     #Game loop
                     while True:
                         await ctx.channel.send(
                                 GAME_PROMPT.format(
-                                    str(self.currentVictims[chan][0]), 
+                                    str(self._currentVictims[chan]), 
                                     random.choice(self.potato_images.get())
                                 )
                         )
                         await asyncio.sleep(seconds_between_pings)
                         
                         #Game end condition, jank asynchronous bullshit
-                        if not chan in self.currentVictims:
+                        if not chan in self._currentVictims:
                             break
             
             else:
@@ -160,13 +146,13 @@ class HotPotatoBot(discord.Bot):
         async def stop_game(ctx):            
             chan = ctx.channel.id
 
-            if chan in self.currentVictims:
-                if ((ctx.author.id == self.currentVictims[chan][0]) and 
+            if chan in self._currentVictims:
+                if ((ctx.author.id == self._currentVictims[chan]) and 
                         (ctx.author.id not in self.admins.get())):
                     await ctx.respond(VICTIM_STOP)
                 else:
                     #will break game loop hosted in start_game
-                    self.currentVictims.pop(chan) 
+                    self._currentVictims.pop(chan) 
                     await ctx.respond(STOP_GAME)
 
             else:
@@ -179,7 +165,7 @@ class HotPotatoBot(discord.Bot):
         async def refresh_all(ctx):
             if ctx.author.id in self.admins.get():
                 await ctx.respond(REFRESH)
-                for loader in (self.potato_images, self.default_users, self.immune_ids, self.admins):
+                for loader in (self.potato_images, self.channels, self.immune_ids, self.admins):
                     loader.update()
             else:
                 await ctx.respond(INVALID_REFRESH)
@@ -215,11 +201,11 @@ class HotPotatoBot(discord.Bot):
 
             await ctx.respond(IMAGE_SUBMISSION)
 
-            self.active_requests.add(moderation_message)
+            self._active_requests.add(moderation_message)
             for emo in [ACCEPT_EMOJI, REJECT_EMOJI]:
                 #react with emoji for decision
                 await moderation_message.add_reaction(emo) 
 
 if __name__ == "__main__":
-    robuticus = HotPotatoBot(IMAGE_FILE, DEFAULT_FILE, IMMUNE_FILE, ADMIN_FILE)
+    robuticus = HotPotatoBot(IMAGE_FILE, CHANNELS_FILE, IMMUNE_FILE, ADMIN_FILE)
     robuticus.run(TOKEN)
