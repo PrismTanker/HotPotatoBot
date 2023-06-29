@@ -68,15 +68,14 @@ class HotPotatoBot(discord.Bot):
         if chan in self._currentVictims:
             if msg.author.id == self._currentVictims[chan]: 
                 pings = msg.mentions
-                newVictim = None
 
-                #If valid, set hotpotato target of channel to first ping in message TODO look at all pings not just first, Use if bot
+                #If valid, set hotpotato target of channel to first ping in message TODO look at all pings not just first
                 try:
-                    newVictim = pings[0].id
-                    if newVictim in self.immune_ids.get():
+                    newVictim = pings[0]
+                    if newVictim.bot or newVictim.id in self.immune_ids.get():
                         await msg.channel.send(IMMUNE_PING)
                     else:
-                        self._currentVictims[chan] = newVictim                                
+                        self._currentVictims[chan] = newVictim.id                                
                 except IndexError:
                     await msg.channel.send(INVALID_PING)
 
