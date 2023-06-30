@@ -142,7 +142,8 @@ class HotPotatoBot(discord.Bot):
                 name = "stop", 
                 description = "Publically demonstrate that you are cringe"
         )
-        async def stop_game(ctx):            
+        
+        async def stop_game(_, ctx):            
             chan = ctx.channel.id
 
             if chan in self._currentVictims:
@@ -161,7 +162,7 @@ class HotPotatoBot(discord.Bot):
                 name = "refresh", 
                 description = "Force parameter refresh"
         )
-        async def refresh_all(ctx):
+        async def refresh_all(_, ctx):
             if ctx.author.id in self.admins.get():
                 await ctx.respond(REFRESH)
                 for loader in (self.potato_images, self.channels, self.immune_ids, self.admins):
@@ -174,7 +175,7 @@ class HotPotatoBot(discord.Bot):
                 name = "submit_image", 
                 description = "submit a URL to potato image pool (Reviewed by a hooman)"
         )
-        async def submit_image(ctx, image_link: discord.Option(str)):
+        async def submit_image(_, ctx, image_link: discord.Option(str)):
             await ctx.respond(IMAGE_SUBMISSION_RESPONSE)
 
             #fucking bite me
