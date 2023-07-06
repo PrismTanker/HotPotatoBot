@@ -18,3 +18,5 @@ GAME_PROMPT = "<@{0}>, You are the hot potato, ping someone here to pass it on! 
 IMAGE_APPROVED = "I showed one of the crazy people in charge your image submission ({}). \n They found it, and I quote, exceedingly 'pog champion.' I have added the link to my collection."
 #Image Link
 IMAGE_DENIED = "I asked my employer about your image submission ({}). \n They told me, and I quote: \"No.\" \n Ensure your submissions are valid links to images of potatos, such that discord will auto-embed the image into a message that includes them. Usually the best way to accomplish this is to open an image in new tab and copy the resulting URL"
+#User mention
+RANDOM_TIME_PING = "Sure thing {}, I'll ping you!"

@@ -26,6 +26,9 @@ IMMUNE_FILE = 'immune.txt'
 CHANNELS_FILE = 'channels.txt'
 ADMIN_FILE = 'admins.txt'
 
+RAND_PING_WAIT_MIN = 10
+RAND_PING_WAIT_MAX = 604800 #one week
+
 #TODO docstrings and typehints
 class HotPotatoGame(commands.Cog):
     def __init__(
@@ -227,6 +230,27 @@ class PotatoAdmin(commands.Cog):
         else:
             await ctx.respond(INVALID_REFRESH)
 
+class PotatoFun(commands.Cog):
+    def __init__(self, client) -> None:
+        super().__init__()
+        self._client = client
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print("Potato Fun Cog Loaded and Ready")
+
+    @discord.slash_command(
+            name = "ping_me",
+            description = "Get the bot to ping you"
+    )
+    async def random_time_ping(self, ctx):
+        pingee = ctx.author
+        await ctx.respond(RANDOM_TIME_PING.format(pingee.mention))
+        #ping after a random length of time
+        await asyncio.sleep(random.randint(
+                RAND_PING_WAIT_MIN, RAND_PING_WAIT_MAX))
+        await ctx.respond(pingee.mention)
+
 class HotPotatoBot(discord.Bot):
     def __init__(
             self, 
@@ -278,4 +302,5 @@ class HotPotatoBot(discord.Bot):
 
 if __name__ == "__main__":
     robuticus = HotPotatoBot(IMAGE_FILE, CHANNELS_FILE, IMMUNE_FILE, ADMIN_FILE)
+    robuticus.add_cog(PotatoFun(robuticus))
     robuticus.run(TOKEN)
