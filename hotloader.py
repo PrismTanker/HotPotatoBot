@@ -27,9 +27,9 @@ class Hotloader:
                     to list of String lines read on update. Defaults to None.
         """            
         
-        self._source = source
-        self._update_period = update_period
-        self._data_processor = data_processor
+        self.source = source
+        self.update_period = update_period
+        self.data_processor = data_processor
         self._last_update = 0
         self._data = None
 
@@ -46,7 +46,7 @@ class Hotloader:
                     If no processing function is passed then the default list of 
                     Strings is provided
         """         
-        if time.time() > self._last_update + self._update_period:
+        if time.time() > self._last_update + self.update_period:
             self.update()
         return self._data
 
@@ -58,7 +58,7 @@ class Hotloader:
 
         #read data from source as a list of strings
         try:
-            with open(self._source) as f:
+            with open(self.source) as f:
                 #strip newlines and trailing whitespace
                 new_data = [line.rstrip() for line in f]
 
@@ -69,8 +69,8 @@ class Hotloader:
             return
 
         #Process data using provided processor
-        if self._data_processor:
-            self._data = self._data_processor(new_data)
+        if self.data_processor:
+            self._data = self.data_processor(new_data)
         else:
             self._data = new_data
 
