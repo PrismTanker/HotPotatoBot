@@ -1,4 +1,4 @@
-INVALID_PING = "You aren't getting off the hook that easily smartass"
+NO_PING = "I'm not here for a pleasant chit chat, ping somebody!"
 ALREADY_STARTED = "If you hadn't already noticed we have already started"
 START_GAME = "Beginning Hot Potato!"
 INVALID_CHANNEL = "Not here, too many cameras"

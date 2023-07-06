@@ -61,15 +61,27 @@ class HotPotatoGame(commands.Cog):
             if msg.author.id == self._currentVictims[chan]: 
                 pings = msg.mentions
 
-                #If valid, set hotpotato target of channel to first ping in message TODO look at all pings not just first
-                try:
-                    newVictim = pings[0]
-                    if newVictim.bot or newVictim.id in self._immune_ids.get():
+                
+                if len(pings) == 0:
+                    await msg.channel.send(NO_PING)
+
+                else:
+                    #Find first undefended target
+                    newVictim = None
+                    for potentialVictim in pings:
+                        if potentialVictim.bot or potentialVictim.id in self._immune_ids.get():
+                            continue
+                        else:
+                            newVictim = potentialVictim
+                            break                  
+ 
+                    if newVictim == None:
                         await msg.channel.send(IMMUNE_PING)
                     else:
-                        self._currentVictims[chan] = newVictim.id                                
-                except IndexError:
-                    await msg.channel.send(INVALID_PING)        
+                        #asynch bullshit
+                        self._currentVictims[chan] = newVictim.id 
+
+                      
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -102,7 +114,6 @@ class HotPotatoGame(commands.Cog):
     async def start_game(self, ctx, seconds_between_pings: discord.Option(int)):                        
         chan = ctx.channel.id
         
-
         #Remember HotLoader contents are volitile when working with this
         if (chan in self._channels.get()):
             if chan in self._currentVictims:
